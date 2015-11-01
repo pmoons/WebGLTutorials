@@ -1,6 +1,17 @@
 var gl; // A global variable for the WebGL context
 var canvas;
+
 var squareVerticesBuffer;
+var squareVerticesColorBuffer;
+var squareRotation = 0.0;
+var squareXOffset = 0.0;
+var squareYOffset = 0.0;
+var squareZOffset = 0.0;
+var lastSquareUpdateTime = 0;
+var xIncValue = 0.2;
+var yIncValue = -0.4;
+var zIncValue = 0.3;
+
 var mvMatrix;
 var shaderProgram;
 var vertexPositionAttribute;
@@ -117,6 +128,12 @@ function drawScene() {
 
     mvTranslate([-0.0, 0.0, -6.0]);
 
+    // Save the current matrix, then rotate before we draw.
+
+    mvPushMatrix();
+    mvRotate(squareRotation, [1, 0, 1]);
+    mvTranslate([squareXOffset, squareYOffset, squareZOffset]);
+
     // Draw the square by binding the array buffer to the square's vertices
     // array, setting the attributes, and pushing it to GL.
 
@@ -132,6 +149,30 @@ function drawScene() {
 
     setMatrixUniforms();
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // Restore the original matrix
+
+    mvPopMatrix();
+
+    // Update the rotation for the next draw, if it's time to do so.
+
+    var currentTime = (new Date).getTime();
+    if (lastSquareUpdateTime) {
+        var delta = currentTime - lastSquareUpdateTime;
+
+        squareRotation += (30 * delta) / 1000.0;
+        squareXOffset += xIncValue * ((30 * delta) / 1000.0);
+        squareYOffset += yIncValue * ((30 * delta) / 1000.0);
+        squareZOffset += zIncValue * ((30 * delta) / 1000.0);
+
+        if (Math.abs(squareYOffset) > 2.5) {
+            xIncValue = -xIncValue;
+            yIncValue = -yIncValue;
+            zIncValue = -zIncValue;
+        }
+    }
+
+    lastSquareUpdateTime = currentTime;
 }
 
 function initShaders() {
@@ -232,4 +273,31 @@ function setMatrixUniforms() {
 
     var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+}
+
+var mvMatrixStack = [];
+
+function mvPushMatrix(m) {
+    if (m) {
+        mvMatrixStack.push(m.dup());
+        mvMatrix = m.dup();
+    } else {
+        mvMatrixStack.push(mvMatrix.dup());
+    }
+}
+
+function mvPopMatrix() {
+    if (!mvMatrixStack.length) {
+        throw ("Can't pop from an empty matrix stack.");
+    }
+
+    mvMatrix = mvMatrixStack.pop();
+    return mvMatrix;
+}
+
+function mvRotate(angle, v) {
+    var inRadians = angle * Math.PI / 180.0;
+
+    var m = Matrix.Rotation(inRadians, $V([v[0], v[1], v[2]])).ensure4x4();
+    multMatrix(m);
 }
