@@ -140,6 +140,51 @@ function initBuffers() {
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
+  // Set up the normals for the verticies, so that we can compute lighting.
+
+  cubeVerticesNormalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
+
+  var vertexNormals = [
+    // Front
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+
+    // Back
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+
+    // Top
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+
+    // Bottom
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+
+    // Right
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+
+    // Left
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0
+  ];
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW);
+
   // Map the texture onto the cube's faces.
 
   cubeVerticesTextureCoordBuffer = gl.createBuffer();
@@ -222,7 +267,6 @@ function initTextures() {
 }
 
 function handleTextureLoaded(image, texture) {
-  console.log("handleTextureLoaded, image = " + image);
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
         gl.UNSIGNED_BYTE, image);
@@ -274,6 +318,11 @@ function drawScene() {
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
   gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+
+  // Bind the normals buffer to the shader attribute.
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
+  gl.vertexAttribPointer(vertexNormalAttribute, 3, gl.FLOAT, false, 0, 0);
 
   // Specify the texture to map onto the faces.
 
@@ -332,6 +381,9 @@ function initShaders() {
 
   textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
   gl.enableVertexAttribArray(textureCoordAttribute);
+
+  vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal");
+  gl.enableVertexAttribArray(vertexNormalAttribute);
 }
 
 //
@@ -416,6 +468,11 @@ function setMatrixUniforms() {
 
   var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
   gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+
+  var normalMatrix = mvMatrix.inverse();
+  normalMatrix = normalMatrix.transpose();
+  var nUniform = gl.getUniformLocation(shaderProgram, "uNormalMatrix");
+  gl.uniformMatrix4fv(nUniform, false, new Float32Array(normalMatrix.flatten()))
 }
 
 var mvMatrixStack = [];
